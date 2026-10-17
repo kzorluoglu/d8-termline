@@ -1,47 +1,45 @@
-# D8 Linux Terminal Widget
+# D8 Terminal 2.0
 
-The D8 Linux Terminal Plugin adds a unique terminal-like interface to your WordPress website, providing an interactive command-line experience.
+A dependency-free WordPress frontend console for public articles. Requires WordPress 6.0+ and PHP 8.0+. Install the plugin directory and activate it. Existing installations keep the same main PHP file and activation record.
 
-## Features
+Commands: `help`, `about`, `clear`, `ls [page] [per_page]`, `cat <id or slug>`, `search "query" [page] [per_page]`, `categories [page]`, `posts <category-id> [page] [per_page]`. Page sizes are limited to 50. Use arrow keys for session history, Tab for command completion, Escape to close.
 
-- **Terminal-like Interface**: The plugin offers a command-line interface style, making your site look like a Linux terminal.
-- **Dynamic Content Loading**: Fetches posts, categories, and more using AJAX, providing a seamless user experience.
-- **Interactive Commands**: Customers can interact with your website using terminal commands.
-- **Social Media Integration**: Enables easy sharing of posts and categories on social media platforms like Twitter, Facebook, and LinkedIn.
+## Extension API
 
-## Screenshots
+Enqueue extension scripts after the core script:
 
-![D8 Linux Terminal Plugin Screenshot](screenshots/closed-wp-plugin.png)
-![D8 Linux Terminal Plugin Screenshot](screenshots/open-wp-plugin.png)
- 
+```php
+add_action('d8_terminal_enqueue', function ($handle) {
+    wp_enqueue_script('my-terminal-commands', plugins_url('commands.js', __FILE__), [$handle], '1.0', true);
+});
+```
 
-*The above screenshot gives you a glimpse of the unique terminal-like interface provided by the D8 Linux Terminal Plugin.*
+```js
+// Runs in a dependent script. Register immediately; no DOM event is required.
+const unregister = D8Terminal.registerCommand('hello', {
+    usage: 'hello [name]',
+    description: 'Greet a visitor',
+    execute(args, { print, link }) {
+        print(`Hello ${args.join(' ') || 'visitor'}`);
+        link('Our website', 'https://example.com');
+    }
+});
+```
 
-## Usage
-The plugin includes several custom commands that can be used to navigate and interact with the site:
+Names must match `[a-z][a-z0-9-]{0,31}`; duplicates are rejected. The return value unregisters the command. Handlers may return a Promise. Context provides `print(text)`, `link(label, httpUrl)`, `request(resource, params)` and frozen public `config`. Resources are limited to posts, numeric post IDs and categories. The `d8terminal:ready` document event signals that the UI is mounted. The API is available immediately after the core script executes.
 
-- `ls [page] [per_page]`: Lists all articles with pagination support.
-- `cat [post-id or title]`: Displays a specific article by its ID or title.
-- `search [query]`: Searches articles with the given query.
-- `categories`: Lists all categories.
-- `posts [category-id]`: Lists all articles in a specific category.
-- `help`: Displays a help message listing all available commands.
+PHP hooks: `d8_terminal_enabled` (boolean), `d8_terminal_config` (public configuration), `d8_terminal_loaded` (Plugin instance), `d8_terminal_enqueue` (script handle). Disable via `add_filter('d8_terminal_enabled', '__return_false');`. Style with scoped CSS variables `--d8-bg`, `--d8-text`, `--d8-accent` on `#d8-terminal`.
 
-## Installation
-To install the D8 Linux Terminal Plugin on your site, follow these steps:
+## Security and privacy
 
-1. Download the plugin: [D8 Linux Terminal Plugin v1.0.0](https://github.com/kzorluoglu/d8terminal-wp-plugin/releases/tag/1.0.0)
-2. Log in to your WordPress admin panel.
-3. Go to `Plugins` > `Add New`.
-4. Click on `Upload Plugin`.
-5. Choose the downloaded ZIP file and click `Install Now`.
-6. Once the installation is complete, click `Activate Plugin` to apply it to your site.
+All output uses DOM text nodes. Articles are intentionally displayed as plain text; the original article link preserves access to rich formatting. HTTP/HTTPS links only; no inline handlers, HTML output API, eval, shell execution, custom server endpoint, database writes or third-party runtime dependencies. Requests omit credentials and reject redirects and cross-origin REST URLs. Only public WordPress REST resources are used, including for signed-in visitors. Server metadata and visitor IP addresses are no longer exposed by this plugin. History stays in memory and is bounded; output and article size are bounded; requests time out after 12 seconds and command execution is serialized.
 
-## Contributing
-Contributions to the D8 Linux Terminal Plugin are welcome. Please feel free to fork the repository, make changes, and submit pull requests.
+Extensions are trusted site JavaScript and must be reviewed like any plugin. These controls do not secure WordPress core, other plugins, the server or compromised extension code. Report vulnerabilities privately to the repository owner; avoid public exploit details before a fix is available.
 
-## License
-This plugin is licensed under the GNU General Public License v2 or later. For more details, see the [license file](http://www.gnu.org/licenses/gpl-2.0.html).
+## Development
 
-## Author
-Developed by [d8devs](http://d8devs.com). Visit our [website](http://d8devs.com/d8-linux-terminal-plugin) for more information.
+`npm ci && npm test` runs DOM integration tests for injection, REST boundaries, parsing, search pagination and keyboard focus. `php -l d8terminalplugin.php` and `php -l includes/Plugin.php` check PHP syntax. Node dependencies are development-only; deploy only the PHP, includes, js and css files.
+
+2.0 replaces undocumented global services with `window.D8Terminal`. Existing third-party scripts using `commandService` must migrate. The old six commands remain supported; `search` now accepts multiword queries and pagination correctly. The widget no longer auto-runs commands on every reopen.
+
+License: GPL-2.0-or-later.

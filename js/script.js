@@ -1,652 +1,190 @@
-document.addEventListener('DOMContentLoaded', function () {
-    const terminalContainer = document.getElementById('terminal-container');
-    const toggleButton = document.getElementById('toggle-terminal');
-
-    // Toggle terminal collapse/expand
-    toggleButton.addEventListener('click', function () {
-        if (terminalContainer.classList.contains('collapsed')) {
-            terminalContainer.classList.remove('collapsed');
-            terminalContainer.classList.add('expanded');
-
-            welcomeScreen();
-        } else {
-            terminalContainer.classList.remove('expanded');
-            terminalContainer.classList.add('collapsed');
+/* D8 Terminal public API. Extensions are trusted site code; output is always text. */
+(() => {
+    'use strict';
+    const commands = new Map();
+    function registerCommand(name, definition) {
+        if (!/^[a-z][a-z0-9-]{0,31}$/.test(name) || !definition || typeof definition.execute !== 'function') throw new TypeError('Invalid command');
+        if (commands.has(name)) throw new Error('Command already registered');
+        commands.set(name, Object.freeze({ ...definition }));
+        return () => commands.delete(name);
+    }
+    function tokenize(line) {
+        const tokens = []; let value = ''; let quote = ''; let started = false; let escaped = false;
+        for (const char of line.trim()) {
+            if (escaped) { value += char; escaped = false; started = true; continue; }
+            if (char === '\\') { escaped = true; started = true; continue; }
+            if (quote) { if (char === quote) quote = ''; else value += char; }
+            else if (char === '"' || char === "'") { quote = char; started = true; }
+            else if (/\s/.test(char)) { if (started) { tokens.push(value); value = ''; started = false; } }
+            else { value += char; started = true; }
         }
-    });
-});
+        if (quote || escaped) throw new Error('Close the quoted text or escape sequence first.');
+        if (started) tokens.push(value);
+        return tokens;
+    }
+    function positive(value, fallback, max = 10000) {
+        if (value === undefined) return fallback;
+        if (!/^[1-9]\d*$/.test(value) || Number(value) > max) throw new Error(`Use a number between 1 and ${max}.`);
+        return Number(value);
+    }
+    function safeUrl(value) {
+        try { const url = new URL(value); return ['https:', 'http:'].includes(url.protocol) ? url.href : null; }
+        catch { return null; }
+    }
+    const api = Object.freeze({ registerCommand, tokenize, positive, safeUrl, version: '2.0.0' });
+    window.D8Terminal = api;
 
-
-/**
- * Configuration variable for WordPress data.
- *
- * @typedef {Object} Config
- * @property {string} baseUrl - The base URL of the WordPress site.
- * @property {string} siteTitle - The title of the WordPress site.
- * @property {string} siteDescription - The description of the WordPress site.
- * @property {string} currentTheme - The currently active theme of the WordPress site.
- * @property {string} memoryUsage - The memory usage of the server running WordPress.
- * @property {string} serverSoftware - The software running on the server hosting WordPress.
- * @property {string} ipAddress - The IP address of the server hosting WordPress.
- * @property {string} requestTime - The time when the WordPress data was requested.
- */
-const config = {
-    baseUrl: wpData.baseUrl, // This will be dynamically set to the WordPress base URL,
-    siteTitle: wpData.siteTitle,
-    siteDescription: wpData.siteDescription,
-    currentTheme: wpData.currentTheme,
-    memoryUsage: wpData.memoryUsage,
-    serverSoftware: wpData.serverSoftware,
-    ipAddress: wpData.ipAddress,
-    requestTime: wpData.requestTime,
-};
-
-const history = document.getElementById('history');
-
-/**
- * Terminal Service
- *
- * A service that provides functionalities for interacting with a terminal-like interface.
- *
- * @property {function} print - Prints a message to the terminal.
- *   @param {string} message - The message to be printed.
- *   @param {boolean} [promptSymbol=true] - Whether to include the '$' prompt symbol before the message.
- * @property {function} printError - Prints an error message to the terminal.
- *   @param {string} errorMessage - The error message to be printed.
- * @property {function} appendCommandInput - Appends a command input field to the terminal.
- *   - If an existing command input field exists, it will be removed.
- *   - Adds an event listener to the command input field to execute commands when Enter key is pressed.
- */
-const terminalService = {
-    print: (message, promptSymbol = true) => {
-        const prompt = promptSymbol ? '$ ' : '';
-        history.innerHTML += `<div class="command-output">${prompt}${message}</div>`;
-    },
-    printError: (errorMessage) => {
-        history.innerHTML += `<div class="command-output error">${errorMessage}</div>`;
-    },
-    appendCommandInput: () => {
-        // Remove existing command input line if it exists
-        const existingCommandLine = history.querySelector('#commandInput');
-        if (existingCommandLine) {
-            existingCommandLine.parentElement.remove();
+    function mount() {
+        const root = document.getElementById('d8-terminal');
+        if (!root || !window.d8TerminalConfig) return;
+        const config = window.d8TerminalConfig;
+        const panel = root.querySelector('.d8-panel');
+        const output = root.querySelector('.d8-output');
+        const input = root.querySelector('input');
+        const toggle = root.querySelector('.d8-toggle');
+        const form = root.querySelector('form');
+        let busy = false; let initialized = false; let cursor = 0; let draft = '';
+        const history = [];
+        const plain = (html) => new DOMParser().parseFromString(String(html ?? ''), 'text/html').body.textContent || '';
+        function print(value, kind = '') {
+            const line = document.createElement('div');
+            line.className = `d8-line ${kind}`;
+            line.textContent = String(value ?? '');
+            output.append(line);
+            while (output.childElementCount > 300) output.firstElementChild.remove();
+            output.scrollTop = output.scrollHeight;
+            return line;
         }
-        // Add the new command input field to the bottom of the history
-        history.innerHTML += `<div class="command-line">$ <input type="text" id="commandInput" placeholder=""></div>`;
-        const commandInput = document.getElementById('commandInput');
-        commandInput.focus();
-
-        // Event listener for the commandInput
-        commandInput.addEventListener('keypress', function (event) {
-            if (event.key === 'Enter') {
-                let command = this.value.trim();
-                commandService.execute(command);
+        function link(label, href) {
+            const url = safeUrl(href);
+            if (!url) return;
+            const a = document.createElement('a');
+            a.textContent = label; a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+            print('').append(a);
+        }
+        function button(label, command) {
+            const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
+            b.addEventListener('click', () => execute(command)); print('').append(b);
+        }
+        async function request(resource, params = {}) {
+            if (!/^(posts(?:\/[1-9]\d*)?|categories)$/.test(resource)) throw new Error('Unsupported resource.');
+            const base = new URL(config.restUrl, window.location.href);
+            if (base.origin !== window.location.origin) throw new Error('The REST API must use the site origin.');
+            const url = new URL(base);
+            // rest_url supports both pretty permalinks and ?rest_route= installations.
+            if (url.searchParams.has('rest_route')) url.searchParams.set('rest_route', url.searchParams.get('rest_route').replace(/\/$/, '') + '/' + resource);
+            else url.pathname = url.pathname.replace(/\/$/, '') + '/' + resource;
+            for (const [key, value] of Object.entries({ context: 'view', ...params })) url.searchParams.set(key, String(value));
+            const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 12000);
+            try {
+                const response = await fetch(url, { credentials: 'omit', signal: controller.signal, redirect: 'error', headers: { Accept: 'application/json' } });
+                if (!response.ok) throw new Error(response.status === 404 ? 'Content not found.' : `Request failed (${response.status}). Check the page number or try again.`);
+                return { data: await response.json(), pages: Number(response.headers.get('X-WP-TotalPages')) || 0 };
+            } finally { clearTimeout(timeout); }
+        }
+        async function list(params, page, perPage, makeCommand) {
+            const result = await request('posts', { ...params, page, per_page: perPage, _fields: 'id,title,link,date', status: 'publish' });
+            if (!result.data.length) { print('No posts found.'); return; }
+            for (const post of result.data) button(`${post.id}  ${plain(post.title.rendered)}  ·  ${post.date.slice(0, 10)}`, `cat ${post.id}`);
+            print(`Page ${page} of ${result.pages}`);
+            if (page > 1) button('← Previous', makeCommand(page - 1));
+            if (page < result.pages) button('Next →', makeCommand(page + 1));
+        }
+        const context = Object.freeze({ print, link, request, config: Object.freeze({ ...config }) });
+        function builtin(name, usage, description, execute) { registerCommand(name, { usage, description, execute }); }
+        builtin('help', 'help', 'Show available commands', () => {
+            for (const [name, command] of commands) print(`${command.usage || name} — ${command.description || ''}`);
+        });
+        builtin('clear', 'clear', 'Clear the console', () => output.replaceChildren());
+        builtin('about', 'about', 'About this site', () => { print(config.siteTitle, 'd8-title'); print(config.siteDescription); });
+        builtin('ls', 'ls [page] [per_page]', 'Browse published articles', async (args) => {
+            const page = positive(args[0], 1); const size = positive(args[1], 10, 50);
+            await list({}, page, size, p => `ls ${p} ${size}`);
+        });
+        builtin('search', 'search "query" [page] [per_page]', 'Search articles; quote multiword queries when paginating', async (args) => {
+            if (!args.length || !args[0].trim()) throw new Error('Usage: search "query" [page] [per_page]');
+            let size = 10; let page = 1;
+            if (args.length > 1 && /^\d+$/.test(args.at(-1))) {
+                const last = args.pop();
+                if (args.length > 1 && /^\d+$/.test(args.at(-1))) { size = positive(last, 10, 50); page = positive(args.pop(), 1); }
+                else page = positive(last, 1);
+            }
+            const query = args.join(' ');
+            await list({ search: query }, page, size, p => `search ${JSON.stringify(query)} ${p} ${size}`);
+        });
+        builtin('posts', 'posts <category-id> [page] [per_page]', 'Browse a category', async (args) => {
+            const id = positive(args[0], undefined, 2147483647);
+            if (!id) throw new Error('Provide a category ID.');
+            const page = positive(args[1], 1); const size = positive(args[2], 10, 50);
+            await list({ categories: id }, page, size, p => `posts ${id} ${p} ${size}`);
+        });
+        builtin('categories', 'categories [page]', 'Browse categories', async (args) => {
+            const page = positive(args[0], 1);
+            const result = await request('categories', { page, per_page: 50, hide_empty: true, _fields: 'id,name,count' });
+            if (!result.data.length) print('No categories found.');
+            for (const category of result.data) button(`${category.id}  ${plain(category.name)} (${category.count})`, `posts ${category.id}`);
+            if (page > 1) button('← Previous', `categories ${page - 1}`);
+            if (page < result.pages) button('Next →', `categories ${page + 1}`);
+        });
+        builtin('cat', 'cat <post-id or slug>', 'Read an article as plain text', async (args) => {
+            if (!args.length) throw new Error('Provide a post ID or slug.');
+            const identifier = args.join(' ');
+            const fields = 'id,title,content,link,status';
+            const result = /^\d+$/.test(identifier)
+                ? await request(`posts/${positive(identifier, undefined, 2147483647)}`, { _fields: fields })
+                : await request('posts', { slug: identifier, per_page: 1, status: 'publish', _fields: fields });
+            const post = Array.isArray(result.data) ? result.data[0] : result.data;
+            if (!post || post.status !== 'publish') throw new Error('Public article not found.');
+            print(plain(post.title.rendered), 'd8-title');
+            print(plain(post.content.rendered).slice(0, 80000));
+            link('Read original ↗', post.link);
+        });
+        async function execute(line) {
+            if (busy || !line.trim()) return;
+            if (line.length > 500) { print('Command is too long.', 'd8-error'); return; }
+            busy = true; input.disabled = true; output.setAttribute('aria-busy', 'true');
+            history.push(line); if (history.length > 100) history.shift(); cursor = history.length; draft = '';
+            input.value = ''; print(`visitor ~ $ ${line}`, 'd8-echo');
+            try {
+                const [name, ...args] = tokenize(line);
+                const command = commands.get(name);
+                if (!command) throw new Error(`Unknown command: ${name}. Type help.`);
+                await command.execute(args, context);
+            } catch (error) { print(error.name === 'AbortError' ? 'Request timed out. Try again.' : error.message, 'd8-error'); }
+            finally {
+                busy = false; input.disabled = false; output.setAttribute('aria-busy', 'false');
+                if (!panel.hidden && root.contains(document.activeElement)) input.focus();
+                output.scrollTop = output.scrollHeight;
+            }
+        }
+        function open(show) {
+            panel.hidden = !show; toggle.setAttribute('aria-expanded', String(show));
+            if (show) {
+                input.focus();
+                if (!initialized) {
+                    initialized = true; print(config.siteTitle, 'd8-title'); print(config.siteDescription);
+                    print('Explore the site from your keyboard. Type help for commands.');
+                    if (config.initialCommand) execute(config.initialCommand);
+                }
+            } else toggle.focus();
+        }
+        toggle.addEventListener('click', () => open(panel.hidden));
+        root.querySelector('.d8-close').addEventListener('click', () => open(false));
+        root.addEventListener('keydown', event => { if (event.key === 'Escape' && !panel.hidden) { event.preventDefault(); open(false); } });
+        form.addEventListener('submit', event => { event.preventDefault(); execute(input.value); });
+        input.addEventListener('keydown', event => {
+            if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+                event.preventDefault(); if (cursor === history.length) draft = input.value;
+                cursor = Math.max(0, Math.min(history.length, cursor + (event.key === 'ArrowUp' ? -1 : 1)));
+                input.value = history[cursor] ?? draft;
+            }
+            if (event.key === 'Tab' && input.value && !/\s/.test(input.value)) {
+                const matches = [...commands.keys()].filter(name => name.startsWith(input.value));
+                if (matches.length) { event.preventDefault(); if (matches.length === 1) input.value = matches[0] + ' '; else print(matches.join('  ')); }
             }
         });
-    },
-};
-
-// API Service
-const apiService = {
-    getTotalPosts: async () => {
-        try {
-            const response = await fetch(`${config.baseUrl}/wp-json/wp/v2/posts?per_page=1`);
-            return response.headers.get('X-WP-Total');
-        } catch (error) {
-            console.error('Error fetching total posts:', error);
-            return 'Unavailable';
-        }
-    },
-    getTotalCategories: async () => {
-        try {
-            const response = await fetch(`${config.baseUrl}/wp-json/wp/v2/categories?per_page=1`);
-            return response.headers.get('X-WP-Total');
-        } catch (error) {
-            console.error('Error fetching total categories:', error);
-            return 'Unavailable';
-        }
-    },
-    getCategories: async () => {
-        try {
-            const response = await fetch(`${config.baseUrl}/wp-json/wp/v2/categories`);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch categories: ${response.statusText}`);
-            }
-            return await response.json();
-        } catch (error) {
-            console.error('Error fetching categories:', error);
-            throw error; // You can choose to throw the error for better error handling
-        }
-    },
-    fetchPostsByPage: async (page = 1, perPage = 10) => {
-        try {
-            const response = await fetch(
-                `${config.baseUrl}/wp-json/wp/v2/posts?page=${page}&per_page=${perPage}&_embed`
-            );
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch posts: ${response.statusText}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error fetching posts:', error);
-            throw error; // You can choose to throw the error for better error handling
-        }
-    },
-    fetchPostsByCategory: async (categoryId) => {
-        try {
-            const response = await fetch(
-                `${config.baseUrl}/wp-json/wp/v2/posts?categories=${categoryId}&_embed`
-            );
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch posts by category: ${response.statusText}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error fetching posts by category:', error);
-            throw error; // You can choose to throw the error for better error handling
-        }
-    },
-    fetchCategoriesBySlug: async (slug) => {
-        try {
-            const response = await fetch(
-                `${config.baseUrl}/wp-json/wp/v2/categories?slug=${slug}`
-            );
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch categories by slug: ${response.statusText}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error fetching categories by slug:', error);
-            throw error; // You can choose to throw the error for better error handling
-        }
-    },
-    fetchPost: async (postId) => {
-        try {
-            const response = await fetch(
-                `${config.baseUrl}/wp-json/wp/v2/posts/${postId}?_embed`
-            );
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch post: ${response.statusText}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error fetching post:', error);
-            throw error; // You can choose to throw the error for better error handling
-        }
-    },
-    fetchPostsBySearch: async (query, page = 1, perPage = 10) => {
-        try {
-            // First, fetch the total number of search results to calculate the total pages
-            const totalResultsResponse = await fetch(
-                `${config.baseUrl}/wp-json/wp/v2/posts?per_page=1&search=${encodeURIComponent(
-                    query
-                )}`
-            );
-
-            const totalResults = parseInt(
-                totalResultsResponse.headers.get('X-WP-Total')
-            );
-            const totalPages = Math.ceil(totalResults / perPage);
-
-            // Check if the requested page exceeds the total pages
-            if (page > totalPages) {
-                throw new Error(
-                    `Page ${page} does not exist. Total pages: ${totalPages}.`
-                );
-            }
-
-            const response = await fetch(
-                `${config.baseUrl}/wp-json/wp/v2/posts?page=${page}&per_page=${perPage}&search=${encodeURIComponent(
-                    query
-                )}&_embed`
-            );
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch posts: ${response.statusText}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error fetching posts:', error);
-            throw error; // You can choose to throw the error for better error handling
-        }
-    },
-    getTotalSearchResults: async (query) => {
-        try {
-            // Make a request to the WordPress REST API to retrieve the total number of search results for the given query
-            const response = await fetch(`${config.baseUrl}/wp-json/wp/v2/posts?search=${query}`);
-            const headers = response.headers;
-            const totalResults = parseInt(headers.get('X-WP-Total'));
-
-            if (isNaN(totalResults)) {
-                throw new Error('Invalid total results count');
-            }
-
-            return totalResults;
-        } catch (error) {
-            console.error('Error fetching total search results:', error);
-            return 0; // Return 0 in case of an error
-        }
-    },
-};
-
-const commandService = {
-    execute: async (command) => {
-        terminalService.print(command);
-
-        let commandParts = command.split(' ');
-        let mainCommand = commandParts[0];
-        let arguments = commandParts.slice(1);
-
-        let page = 1;
-        let perPage = 10;
-
-        try {
-            switch (mainCommand) {
-                case 'ls':
-                    page = parseInt(arguments[0]) || 1;
-                    perPage = parseInt(arguments[1]) || 10;
-                    await listPosts(page, perPage);
-                    break;
-                case 'cat':
-                    await viewPost(arguments[0]);
-                    break;
-                case 'search':
-                    page = parseInt(arguments[0]) || 1;
-                    perPage = parseInt(arguments[1]) || 10;
-                    await searchPosts(arguments[0], page, perPage);
-                    break;
-                case 'categories':
-                    await fetchCategories();
-                    break;
-                case 'posts':
-                    await listPostsByCategory(arguments[0]);
-                    break;
-                case 'help':
-                    await getHelp();
-                    break;
-                default:
-                    terminalService.printError('Command not recognized');
-            }
-        } catch (error) {
-            terminalService.printError('An error occurred while executing the command.');
-        } finally {
-            await terminalService.appendCommandInput();
-            history.scrollTop = history.scrollHeight;
-        }
-    },
-};
-
-/**
- * The urlService object provides utility functions for working with URLs.
- *
- * @namespace urlService
- */
-const urlService = {
-    getCurrentPathname: () => {
-        const url = window.location.href;
-        const urlObj = new URL(url);
-        return urlObj.pathname;
-    },
-    getCategoryNameFromPathname: (pathname) => {
-        if (pathname.startsWith('/category/')) {
-            let categoryName = pathname.split('/category/')[1];
-            if (categoryName.endsWith('/')) {
-                categoryName = categoryName.slice(0, -1);
-            }
-            return categoryName;
-        }
-        return null;
-    },
-    getPostSlugFromPathname: (pathname) => {
-        if (pathname !== '/' && !pathname.startsWith('/category/')) {
-            let postSlug = pathname.slice(1); // Remove the leading '/'
-            if (postSlug.endsWith('/')) {
-                postSlug = postSlug.slice(0, -1);
-            }
-            return postSlug;
-        }
-        return null;
-    },
-};
-
-/**
- * Generates share links for social media platforms.
- *
- * @param {string} url - The URL to be shared.
- * @param {string} title - The title of the content to be shared.
- * @returns {string} - The HTML code containing the generated share links.
- */
-const shareService = {
-    generateShareLinks: (url, title) => {
-        const twitterShareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${title}`;
-        const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
-        const linkedInShareUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${url}&title=${title}`;
-
-        return `<span class="shared-links"><span class="text-orange">Share on</span>
-    <a href="${twitterShareUrl}" target="_blank" class="terminal-link">Twitter</a> |
-    <a href="${facebookShareUrl}" target="_blank" class="terminal-link">Facebook</a> |
-    <a href="${linkedInShareUrl}" target="_blank" class="terminal-link">LinkedIn</a></span>
-    `;
-    },
-};
-
-// Service for error handling
-const errorService = {
-    printError: (message) => {
-        // Implement logic to display error messages
-    },
-};
-
-async function welcomeScreen() {
-    const title = await printTitle();
-    await commandService.execute('help');
-    await autoExecuteCommandFromURL();
-}
-
-/**
- * Executes a command based on the current URL.
- * If the URL contains a category name, it executes a command to retrieve posts from that category.
- * If the URL contains a post slug, it executes a command to retrieve the category of that post.
- * Note: This method is asynchronous.
- *
- * @return {Promise<void>} A Promise that resolves when the command has been executed.
- */
-async function autoExecuteCommandFromURL() {
-    const pathname = urlService.getCurrentPathname();
-    const categoryName = urlService.getCategoryNameFromPathname(pathname);
-    const postSlug = urlService.getPostSlugFromPathname(pathname);
-
-    if (categoryName) {
-        const categoryId = await getCategoryIDByName(categoryName);
-        await commandService.execute(`posts ${categoryId}`);
-    } else if (postSlug) {
-        const postId = await getPostIDBySlug(postSlug);
-        await commandService.execute(`cat ${postId}`);
+        document.dispatchEvent(new CustomEvent('d8terminal:ready', { detail: api }));
     }
-}
-
-async function getPostIDBySlug(slug) {
-    try {
-        let response = await fetch(`/wp-json/wp/v2/posts?slug=${slug}`);
-        let posts = await response.json();
-        if (posts.length > 0) {
-            return posts[0].id; // Assuming the first post is the one we want
-        } else {
-            throw new Error('Post not found');
-        }
-    } catch (error) {
-        console.error('Error fetching post ID:', error);
-        return null;
-    }
-}
-
-async function printTitle() {
-    try {
-        const totalPosts = await apiService.getTotalPosts();
-        const totalCategories = await apiService.getTotalCategories();
-
-        const domain = new URL(config.baseUrl).hostname;
-        const emailAddress = `hello@${domain}`;
-
-        terminalService.print(`Welcome to ${config.siteTitle} - ${config.siteDescription}`);
-        terminalService.print(`* For more information, email: ${emailAddress}`);
-        terminalService.print(``);
-        terminalService.print(`System information as of ${new Date().toLocaleString()}`);
-        terminalService.print(``);
-        terminalService.print(`
-            <table class="no-spacing">
-                <tr>
-                    <td>$ System software:</td>
-                    <td>${config.serverSoftware}</td>
-                    <td>Total Articles:</td>
-                    <td>${totalPosts}</td>
-                </tr>
-                <tr>
-                    <td>$ Request Time:</td>
-                    <td>${config.requestTime}</td>
-                    <td>Total Categories:</td>
-                    <td>${totalCategories}</td>
-                </tr>
-                <tr>
-                    <td>$ Memory usage:</td>
-                    <td>${config.memoryUsage}</td>
-                    <td>IP address:</td>
-                    <td>${config.ipAddress}</td>
-                </tr>
-            </table>
-        `);
-        terminalService.print(`Current theme: ${config.currentTheme} `);
-        terminalService.print(``);
-    } catch (error) {
-        errorService.printError('Error fetching data');
-    }
-}
-
-
-async function getHelp() {
-    let helpText = `
-        <div class="help-text">
-            <strong>Available Commands:</strong>
-            <ul>
-                <li><strong>ls [page] [per_page]</strong> - Lists all articles. Usage: <code>ls</code> for default, <code>ls 2</code> for page 2, <code>ls 2 5</code> for page 2 with 5 posts per page.</li>
-                <li><strong>cat [post-id or title]</strong> - Displays a specific article by its ID or title. Usage: <code>cat 123</code> or <code>cat example-post-title</code></li>
-                <li><strong>search [query] [page] [per_page]</strong> - Searches articles with the given query. Usage: <code>search keyword</code> for default, <code>search keyword 2</code> for page 2, <code>search keyword 2 5</code> for page 2 with 5 posts per page</li>
-                <li><strong>categories</strong> - Lists all categories. Usage: <code>categories</code></li>
-                <li><strong>posts [category-id]</strong> - Lists all articles in a specific category. Usage: <code>posts 5</code> (where 5 is the category ID)</li>
-                <li><strong>help</strong> - Displays this help message. Usage: <code>help</code></li>
-            </ul>
-        </div>
-    `;
-    terminalService.print(`${helpText}`, false);
-}
-
-
-async function listPosts(page = 1, perPage = 10) {
-    try {
-        // First, fetch the total number of posts to calculate the total pages
-        const totalPosts = await apiService.getTotalPosts();
-        let totalPages = Math.ceil(totalPosts / perPage);
-
-        // Check if the requested page exceeds the total pages
-        if (page > totalPages) {
-            errorService.printError(`Page ${page} does not exist. Total pages: ${totalPages}.`);
-            return;
-        }
-
-        const posts = await apiService.fetchPostsByPage(page, perPage);
-
-        // Generate and display output
-        const output = posts.map(post => {
-            const date = new Date(post.date).toLocaleDateString();
-            const postUrl = `${config.baseUrl}/${post.slug}`; // Adjust based on your site's URL structure
-            const postTitle = encodeURIComponent(post.title.rendered);
-
-            // Generate social media share links
-            const socialMediaLinks = shareService.generateShareLinks(postUrl, postTitle);
-
-            return `ID: ${post.id} | <span class="clickable-post" onclick="commandService.execute('cat ${post.id}')">${post.title.rendered}</span> | Date: ${date} | ${socialMediaLinks}`;
-        }).join('<br>');
-
-        terminalService.print(output, false);
-
-        // Pagination controls
-        terminalService.print('<div class="pagination-controls">', false);
-        if (page > 1) {
-            terminalService.print(`<button class="terminal-button" onclick="commandService.execute(('ls ${parseInt(page) - 1} ${perPage}')">Previous Page</button>`, false);
-        }
-        if (page < totalPages) {
-            terminalService.print(`<button class="terminal-button" onclick="commandService.execute(('ls ${parseInt(page) + 1} ${perPage}')">Next Page</button>`, false);
-        }
-        terminalService.print('</div>', false);
-    } catch (error) {
-        errorService.printError('Error fetching posts');
-    }
-}
-
-
-async function viewPost(identifier) {
-
-    try {
-        const post = await apiService.fetchPost(identifier);
-
-        if (!post || post.length === 0) {
-            errorService.printError('Post not found');
-            return;
-        }
-
-        let content = `<h2>${post.title.rendered}</h2>`;
-
-        // Check if the post has a featured image
-        if (post._embedded && post._embedded['wp:featuredmedia'] && post._embedded['wp:featuredmedia'][0]) {
-            const imageUrl = post._embedded['wp:featuredmedia'][0].source_url;
-            content += `<img src="${imageUrl}" alt="${post.title.rendered}" onclick="openImagePopup('${imageUrl}')">`;
-        }
-
-        content += `${post.content.rendered}`;
-        terminalService.print(content, false);
-
-        const postUrl = `${config.baseUrl}/${post.slug}`; // Adjust based on your site's URL structure
-        const postTitle = encodeURIComponent(post.title.rendered);
-
-        terminalService.print(shareService.generateShareLinks(postUrl, postTitle), false);
-    } catch (error) {
-        errorService.printError('Error fetching post');
-    }
-}
-
-async function fetchCategories() {
-    try {
-        const categories = await apiService.getCategories();
-        displayCategories(categories);
-    } catch (error) {
-        errorService.printError('Error fetching categories');
-    }
-}
-
-function displayCategories(categories) {
-    const output = categories.map(category => {
-        const categoryUrl = `${config.baseUrl}/${category.slug}`; // Adjust based on your site's URL structure
-        const categoryTitle = encodeURIComponent(category.name);
-
-        // Generate social media share links
-        const socialMediaLinks = shareService.generateShareLinks(categoryUrl, categoryTitle);
-
-        return `ID: ${category.id} | <span class="clickable-post" onclick="commandService.execute('posts ${category.id}')">${category.name}</span> | <span>${socialMediaLinks}</span>`;
-    }).join('<br>');
-
-    terminalService.print(output);
-}
-
-async function listPostsByCategory(categoryId) {
-    try {
-        const posts = await apiService.fetchPostsByCategory(categoryId);
-        const output = posts.map(post => {
-            const date = new Date(post.date).toLocaleDateString();
-            return `ID: ${post.id} | <span class="clickable-post" onclick="commandService.execute('cat ${post.id}')">${post.title.rendered}</span> | Date: ${date}`;
-        }).join('<br>');
-
-        terminalService.print(output);
-    } catch (error) {
-        errorService.printError(`Error fetching posts for category ${categoryId}`);
-    }
-}
-
-async function getCategoryIDByName(categoryName) {
-    try {
-        const categories = await apiService.fetchCategoriesBySlug(categoryName);
-        if (categories.length > 0) {
-            return categories[0].id; // Assuming the first category is the one we want
-        } else {
-            throw new Error('Category not found');
-        }
-    } catch (error) {
-        errorService.printError('Error fetching category ID:', error);
-        return null;
-    }
-}
-
-async function searchPosts(query, page = 1, perPage = 10) {
-    try {
-        // Fetch the total number of search results to calculate total pages
-        const totalResults = await apiService.getTotalSearchResults(query);
-        const totalPages = Math.ceil(totalResults / perPage);
-
-        if (totalPages === 0) {
-            terminalService.print(`No results found for "${query}"`);
-            return;
-        }
-
-        // Check if the requested page exceeds the total pages
-        if (page > totalPages) {
-            errorService.printError(`Page ${page} does not exist. Total pages: ${totalPages}.`);
-            return;
-        }
-
-        // Fetch search results for the specified page
-        const searchResults = await apiService.fetchPostsBySearch(query, page, perPage);
-
-        // Generate and display output
-        const output = searchResults.map(post => {
-            const date = new Date(post.date).toLocaleDateString();
-            const postUrl = `${config.baseUrl}/${post.slug}`; // Adjust based on your site's URL structure
-            const postTitle = encodeURIComponent(post.title.rendered);
-
-            // Generate social media share links
-            const socialMediaLinks = shareService.generateShareLinks(postUrl, postTitle);
-
-            return `ID: ${post.id} | <span class="clickable-post" onclick="commandService.execute('cat ${post.id}')">${post.title.rendered}</span> | Date: ${date} | ${socialMediaLinks}`;
-        }).join('<br>');
-
-        terminalService.print(output);
-
-        // Pagination controls
-        terminalService.print('<div class="pagination-controls">', false);
-        if (page > 1) {
-            terminalService.print(`<button class="terminal-button" onclick="commandService.execute('search ${query} ${parseInt(page) - 1} ${perPage}')">Previous Page</button>`, false);
-        }
-        if (page < totalPages) {
-            terminalService.print(`<button class="terminal-button" onclick="commandService.execute('search ${query} ${parseInt(page) + 1} ${perPage}')">Next Page</button>`, false);
-        }
-        terminalService.print('</div>', false);
-    } catch (error) {
-        errorService.printError('Error fetching search results');
-    }
-}
-
-
-function openImagePopup(imageUrl) {
-    const popup = document.createElement('div');
-    popup.style.position = 'fixed';
-    popup.style.top = '0';
-    popup.style.left = '0';
-    popup.style.width = '100%';
-    popup.style.height = '100%';
-    popup.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-    popup.style.display = 'flex';
-    popup.style.justifyContent = 'center';
-    popup.style.alignItems = 'center';
-    popup.style.zIndex = '1000';
-
-    const img = document.createElement('img');
-    img.src = imageUrl;
-    img.style.maxWidth = '90%';
-    img.style.maxHeight = '90%';
-    img.style.margin = 'auto';
-
-    popup.appendChild(img);
-
-    popup.addEventListener('click', function () {
-        document.body.removeChild(popup);
-    });
-
-    document.body.appendChild(popup);
-}
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once: true });
+    else mount();
+})();

@@ -1,0 +1,1 @@
+{"name":"d8terminal-wp-plugin","version":"2.0.0","private":true,"scripts":{"test":"node --test tests/*.test.cjs"},"devDependencies":{"jsdom":"^26.1.0"}}
