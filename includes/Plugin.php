@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) { exit; }
 
 final class Plugin
 {
-    public const VERSION = '2.0.0';
+    public const VERSION = '2.0.1';
     private string $file;
     private bool $rendered = false;
 
@@ -46,12 +46,12 @@ final class Plugin
         ?>
         <aside id="d8-terminal" aria-label="<?php esc_attr_e('Site terminal', 'd8-linux-terminal-widget'); ?>">
             <section class="d8-panel" id="d8-terminal-panel" aria-label="<?php esc_attr_e('Terminal console', 'd8-linux-terminal-widget'); ?>" hidden>
-                <header class="d8-header"><span class="d8-lights" aria-hidden="true">● ● ●</span><span>d8 / terminal</span><button type="button" class="d8-close" aria-label="<?php esc_attr_e('Close terminal', 'd8-linux-terminal-widget'); ?>">×</button></header>
+                <header class="d8-header"><span class="d8-header-icon" aria-hidden="true">&gt;_</span><span>Pardus 2005 Terminal</span><button type="button" class="d8-close" aria-label="<?php esc_attr_e('Close terminal', 'd8-linux-terminal-widget'); ?>">×</button></header>
                 <div class="d8-output" role="log" aria-live="polite" aria-relevant="additions" tabindex="0"></div>
                 <form class="d8-prompt" autocomplete="off"><label for="d8-terminal-input">visitor ~ $</label><input id="d8-terminal-input" name="command" type="text" maxlength="500" spellcheck="false" autocapitalize="off" aria-label="<?php esc_attr_e('Terminal command', 'd8-linux-terminal-widget'); ?>" placeholder="Type help to get started"><button type="submit" aria-label="<?php esc_attr_e('Run command', 'd8-linux-terminal-widget'); ?>">↵</button></form>
                 <footer class="d8-hint">TAB autocomplete · ↑↓ history · ESC close</footer>
             </section>
-            <button type="button" class="d8-toggle" aria-expanded="false" aria-controls="d8-terminal-panel"><span aria-hidden="true">&gt;_</span> Terminal</button>
+            <button type="button" class="d8-toggle" aria-expanded="false" aria-controls="d8-terminal-panel"><span aria-hidden="true">&gt;_</span> Pardus 2005</button>
         </aside>
         <?php
     }

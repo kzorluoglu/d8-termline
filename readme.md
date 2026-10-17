@@ -1,6 +1,6 @@
-# D8 Terminal 2.0
+# Pardus 2005 Terminal
 
-A dependency-free WordPress frontend console for public articles. Requires WordPress 6.0+ and PHP 8.0+. Install the plugin directory and activate it. Existing installations keep the same main PHP file and activation record.
+A compact, classic desktop terminal inspired by Pardus 2005. A dependency-free WordPress frontend console for public articles. Requires WordPress 6.0+ and PHP 8.0+. Install the plugin directory and activate it. Existing installations keep the same main PHP file and activation record.
 
 Commands: `help`, `about`, `clear`, `ls [page] [per_page]`, `cat <id or slug>`, `search "query" [page] [per_page]`, `categories [page]`, `posts <category-id> [page] [per_page]`. Page sizes are limited to 50. Use arrow keys for session history, Tab for command completion, Escape to close.
 
