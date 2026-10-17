@@ -1,4 +1,4 @@
-# Pardus 1.0 Terminal
+# D8 Pardus Terminal
 
 A compact, classic desktop terminal inspired by Pardus 1.0. A dependency-free WordPress frontend console for public articles. Requires WordPress 6.0+ and PHP 8.0+. Install the plugin directory and activate it. Existing installations keep the same main PHP file and activation record.
 
@@ -43,3 +43,7 @@ Extensions are trusted site JavaScript and must be reviewed like any plugin. The
 2.0 replaces undocumented global services with `window.D8Terminal`. Existing third-party scripts using `commandService` must migrate. The old six commands remain supported; `search` now accepts multiword queries and pagination correctly. The widget no longer auto-runs commands on every reopen.
 
 License: GPL-2.0-or-later.
+
+Independent project; not affiliated with or endorsed by the Pardus project. No Pardus logos or assets are bundled.
+
+Build the WordPress.org upload ZIP with `python3 scripts/build-release.py`. The archive contains only runtime files, the GPL license and documentation under `d8-pardus-terminal/`.
