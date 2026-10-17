@@ -1,14 +1,16 @@
-=== Pardus 2005 Terminal ===
+=== Pardus 1.0 Terminal ===
 Contributors: kzorluoglu
 Requires at least: 6.0
 Requires PHP: 8.0
-Stable tag: 2.0.1
+Stable tag: 2.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 An extensible, accessible console for public WordPress content.
 
 == Changelog ==
+= 2.0.2 =
+* Use the original release name, Pardus 1.0, throughout the interface.
 = 2.0.1 =
 * Rename to Pardus 2005 Terminal and introduce a compact classic terminal appearance.
 = 2.0.0 =

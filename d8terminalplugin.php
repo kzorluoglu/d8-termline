@@ -1,10 +1,10 @@
 <?php
 /**
- * Plugin Name: Pardus 2005 Terminal
+ * Plugin Name: Pardus 1.0 Terminal
  * Plugin URI: https://github.com/kzorluoglu/d8terminal-wp-plugin
  * Update URI: https://github.com/kzorluoglu/d8terminal-wp-plugin
  * Description: An extensible, accessible terminal for exploring public WordPress content.
- * Version: 2.0.1
+ * Version: 2.0.2
  * Requires at least: 6.0
  * Requires PHP: 8.0
  * Author: d8devs

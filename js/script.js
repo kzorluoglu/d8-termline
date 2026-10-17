@@ -31,7 +31,7 @@
         try { const url = new URL(value); return ['https:', 'http:'].includes(url.protocol) ? url.href : null; }
         catch { return null; }
     }
-    const api = Object.freeze({ registerCommand, tokenize, positive, safeUrl, version: '2.0.1' });
+    const api = Object.freeze({ registerCommand, tokenize, positive, safeUrl, version: '2.0.2' });
     window.D8Terminal = api;
 
     function mount() {
