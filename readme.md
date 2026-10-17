@@ -1,6 +1,6 @@
-# D8 Pardus Terminal
+# D8 Konsole
 
-A compact, classic desktop terminal inspired by Pardus 1.0. A dependency-free WordPress frontend console for public articles. Requires WordPress 6.0+ and PHP 8.0+. Install the plugin directory and activate it. Existing installations keep the same main PHP file and activation record.
+A compact, classic desktop terminal inspired by classic desktop terminals. A dependency-free WordPress frontend console for public articles. Requires WordPress 6.0+ and PHP 8.0+. Install the plugin directory and activate it. Existing installations keep the same main PHP file and activation record.
 
 Commands: `help`, `about`, `clear`, `ls [page] [per_page]`, `cat <id or slug>`, `search "query" [page] [per_page]`, `categories [page]`, `posts <category-id> [page] [per_page]`. Page sizes are limited to 50. Use arrow keys for session history, Tab for command completion, Escape to close.
 
@@ -44,6 +44,6 @@ Extensions are trusted site JavaScript and must be reviewed like any plugin. The
 
 License: GPL-2.0-or-later.
 
-Independent project; not affiliated with or endorsed by the Pardus project. No Pardus logos or assets are bundled.
+Independent project; not affiliated with or endorsed by KDE or the Konsole project. No KDE logos or Konsole code or assets are bundled.
 
-Build the WordPress.org upload ZIP with `python3 scripts/build-release.py`. The archive contains only runtime files, the GPL license and documentation under `d8-pardus-terminal/`.
+Build the WordPress.org upload ZIP with `python3 scripts/build-release.py`. The archive contains only runtime files, the GPL license and documentation under `d8-konsole/`.

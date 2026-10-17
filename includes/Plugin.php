@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) { exit; }
 
 final class Plugin
 {
-    public const VERSION = '2.0.3';
+    public const VERSION = '2.0.4';
     private string $file;
     private bool $rendered = false;
 
@@ -44,14 +44,14 @@ final class Plugin
         if ($this->rendered || !$this->enabled()) { return; }
         $this->rendered = true;
         ?>
-        <aside id="d8-terminal" aria-label="<?php esc_attr_e('Site terminal', 'd8-pardus-terminal'); ?>">
-            <section class="d8-panel" id="d8-terminal-panel" aria-label="<?php esc_attr_e('Terminal console', 'd8-pardus-terminal'); ?>" hidden>
-                <header class="d8-header"><span class="d8-header-icon" aria-hidden="true">&gt;_</span><span>D8 Pardus Terminal</span><button type="button" class="d8-close" aria-label="<?php esc_attr_e('Close terminal', 'd8-pardus-terminal'); ?>">×</button></header>
+        <aside id="d8-terminal" aria-label="<?php esc_attr_e('Site terminal', 'd8-konsole'); ?>">
+            <section class="d8-panel" id="d8-terminal-panel" aria-label="<?php esc_attr_e('Terminal console', 'd8-konsole'); ?>" hidden>
+                <header class="d8-header"><span class="d8-header-icon" aria-hidden="true">&gt;_</span><span>D8 Konsole</span><button type="button" class="d8-close" aria-label="<?php esc_attr_e('Close terminal', 'd8-konsole'); ?>">×</button></header>
                 <div class="d8-output" role="log" aria-live="polite" aria-relevant="additions" tabindex="0"></div>
-                <form class="d8-prompt" autocomplete="off"><label for="d8-terminal-input">visitor ~ $</label><input id="d8-terminal-input" name="command" type="text" maxlength="500" spellcheck="false" autocapitalize="off" aria-label="<?php esc_attr_e('Terminal command', 'd8-pardus-terminal'); ?>" placeholder="<?php esc_attr_e('Type help to get started', 'd8-pardus-terminal'); ?>"><button type="submit" aria-label="<?php esc_attr_e('Run command', 'd8-pardus-terminal'); ?>">↵</button></form>
-                <footer class="d8-hint"> <?php esc_html_e('TAB autocomplete · ↑↓ history · ESC close', 'd8-pardus-terminal'); ?></footer>
+                <form class="d8-prompt" autocomplete="off"><label for="d8-terminal-input">visitor ~ $</label><input id="d8-terminal-input" name="command" type="text" maxlength="500" spellcheck="false" autocapitalize="off" aria-label="<?php esc_attr_e('Terminal command', 'd8-konsole'); ?>" placeholder="<?php esc_attr_e('Type help to get started', 'd8-konsole'); ?>"><button type="submit" aria-label="<?php esc_attr_e('Run command', 'd8-konsole'); ?>">↵</button></form>
+                <footer class="d8-hint"> <?php esc_html_e('TAB autocomplete · ↑↓ history · ESC close', 'd8-konsole'); ?></footer>
             </section>
-            <button type="button" class="d8-toggle" aria-expanded="false" aria-controls="d8-terminal-panel"><span aria-hidden="true">&gt;_</span> D8 Pardus</button>
+            <button type="button" class="d8-toggle" aria-expanded="false" aria-controls="d8-terminal-panel"><span aria-hidden="true">&gt;_</span> D8 Konsole</button>
         </aside>
         <?php
     }
