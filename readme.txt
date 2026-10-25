@@ -1,5 +1,5 @@
-=== D8 Konsole ===
-Contributors: kzorluoglu
+=== D8 Termline ===
+Contributors: d8devs
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.0
@@ -11,19 +11,19 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 An extensible, accessible console for public WordPress content.
 
 == Description ==
-D8 Konsole adds a compact, keyboard-operated console to your site's frontend. Visitors can browse categories, list and search published posts, and read articles as plain text without leaving the page.
+D8 Termline adds a compact, keyboard-operated console to your site's frontend. Visitors can browse categories, list and search published posts, and read articles as plain text without leaving the page.
 
 Commands include help, about, clear, ls, search, categories, posts and cat. Use Tab for completion, arrow keys for session history and Escape to close. Developers can register additional commands using documented PHP hooks and a JavaScript API.
 
 This is a public-content browser, not a server terminal. It provides no shell, PHP editor, arbitrary code execution, file manager or database editing. All scripts and styles are bundled locally. It makes no third-party service requests and includes no telemetry, tracking or paid feature gates. Requests use your site's public WordPress REST API. Command history is kept in memory only and disappears on page reload.
 
-The appearance is inspired by classic desktop terminals. This independent project is not affiliated with or endorsed by KDE or the Konsole project. No KDE logos or Konsole code or assets are included.
+The appearance is inspired by classic desktop terminals.
 
 Source and developer documentation: https://github.com/kzorluoglu/d8-pardus-terminal
 
 == Installation ==
-1. Upload the d8-konsole directory to wp-content/plugins, or upload the ZIP using Plugins > Add New.
-2. Activate D8 Konsole.
+1. Upload the d8-termline directory to wp-content/plugins, or upload the ZIP using Plugins > Add New.
+2. Activate D8 Termline.
 3. Open a public page and select the terminal button. Type help to see commands.
 
 == Frequently Asked Questions ==
@@ -41,7 +41,7 @@ Yes. See readme.md for the command registry and PHP hooks. Extension scripts are
 
 == Changelog ==
 = 2.0.4 =
-* Rename to D8 Konsole, update the text domain and release package.
+* Rename to D8 Termline, update the text domain and release package.
 * Align the translation domain and add installation, privacy and license documentation.
 
 = 2.0.2 =
