@@ -4,7 +4,7 @@ Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.0
 Tags: terminal, keyboard, accessibility, posts
-Stable tag: 2.0.4
+Stable tag: 2.0.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,7 +19,7 @@ This is a public-content browser, not a server terminal. It provides no shell, P
 
 The appearance is inspired by classic desktop terminals.
 
-Source and developer documentation: https://github.com/kzorluoglu/d8-pardus-terminal
+Source and developer documentation: https://github.com/kzorluoglu/d8-termline
 
 == Installation ==
 1. Upload the d8-termline directory to wp-content/plugins, or upload the ZIP using Plugins > Add New.
@@ -39,7 +39,14 @@ No. The REST API must be available on the same origin as the website. No account
 = Can developers extend it? =
 Yes. See readme.md for the command registry and PHP hooks. Extension scripts are trusted site code and should be reviewed like other plugins.
 
+== Screenshots ==
+1. Browse available commands with help in the compact frontend terminal.
+2. List published WordPress posts with ls and open articles with cat.
+
 == Changelog ==
+= 2.0.5 =
+* Update the source and developer documentation links to the renamed GitHub repository.
+
 = 2.0.4 =
 * Rename to D8 Termline, update the text domain and release package.
 * Align the translation domain and add installation, privacy and license documentation.

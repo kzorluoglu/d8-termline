@@ -4,7 +4,7 @@ if (!defined('ABSPATH')) { exit; }
 
 final class Plugin
 {
-    public const VERSION = '2.0.4';
+    public const VERSION = '2.0.5';
     private string $file;
     private bool $rendered = false;
 

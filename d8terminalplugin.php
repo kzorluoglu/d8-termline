@@ -1,9 +1,9 @@
 <?php
 /**
  * Plugin Name: D8 Termline
- * Plugin URI: https://github.com/kzorluoglu/d8-pardus-terminal
+ * Plugin URI: https://github.com/kzorluoglu/d8-termline
  * Description: An extensible, accessible terminal for exploring public WordPress content.
- * Version: 2.0.4
+ * Version: 2.0.5
  * Requires at least: 6.0
  * Requires PHP: 8.0
  * Author: d8devs

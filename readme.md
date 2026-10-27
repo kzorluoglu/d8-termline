@@ -4,6 +4,16 @@ A compact, classic desktop terminal inspired by classic desktop terminals. A dep
 
 Commands: `help`, `about`, `clear`, `ls [page] [per_page]`, `cat <id or slug>`, `search "query" [page] [per_page]`, `categories [page]`, `posts <category-id> [page] [per_page]`. Page sizes are limited to 50. Use arrow keys for session history, Tab for command completion, Escape to close.
 
+## Screenshots
+
+Browse available commands with `help`.
+
+![D8 Termline showing available commands](https://raw.githubusercontent.com/kzorluoglu/d8-termline/main/screenshots/terminal-help.png)
+
+List published posts with `ls` and open an article with `cat`.
+
+![D8 Termline listing published WordPress posts](https://raw.githubusercontent.com/kzorluoglu/d8-termline/main/screenshots/terminal-posts.png)
+
 ## Extension API
 
 Enqueue extension scripts after the core script:
